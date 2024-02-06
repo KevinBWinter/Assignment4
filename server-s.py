@@ -1,7 +1,6 @@
 import socket
 import signal
 import sys
-import time
 
 def signal_handler(signum, frame):
     global not_stopped
@@ -44,8 +43,8 @@ def main():
                 # Send "accio\r\n" command
                 client_socket.send(b"accio\r\n")
 
-                # Set a timeout for receiving data
-                client_socket.settimeout(10)  # Adjust the timeout as needed
+                # Set a timeout for receiving data (adjust as needed)
+                client_socket.settimeout(10)
 
                 # Receive data and count bytes
                 total_bytes_received = 0
@@ -54,6 +53,9 @@ def main():
                     if not data:
                         break
                     total_bytes_received += len(data)
+
+                if total_bytes_received == 0:
+                    sys.stderr.write("ERROR: No data received\n")  # Print error on no data
 
                 print(f"Received {total_bytes_received} bytes")
 
