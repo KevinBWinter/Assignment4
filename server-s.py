@@ -1,10 +1,39 @@
 import socket
 import signal
 import sys
+import time
 
 def signal_handler(signum, frame):
     global not_stopped
     not_stopped = False
+
+def handle_client(client_socket):
+    try:
+        # Send "accio\r\n" command
+        client_socket.send(b"accio\r\n")
+
+        # Set a timeout for receiving data
+        client_socket.settimeout(10)
+
+        # Receive data and count bytes
+        total_bytes_received = 0
+        while True:
+            data = client_socket.recv(4096)
+            if not data:
+                break
+            total_bytes_received += len(data)
+
+        if total_bytes_received == 0:
+            sys.stderr.write("ERROR: No data received\n")
+        else:
+            print(f"Received {total_bytes_received} bytes")
+
+    except socket.timeout:
+        sys.stderr.write("ERROR: Connection timed out\n")
+    except Exception as e:
+        sys.stderr.write(f"ERROR: {str(e)}\n")
+    finally:
+        client_socket.close()
 
 def main():
     if len(sys.argv) != 2:
@@ -40,27 +69,8 @@ def main():
                 client_socket, client_address = server_socket.accept()
                 print(f"Accepted connection from {client_address}")
 
-                # Send "accio\r\n" command
-                client_socket.send(b"accio\r\n")
-
-                # Set a timeout for receiving data (adjust as needed)
-                client_socket.settimeout(10)
-
-                # Receive data and count bytes
-                total_bytes_received = 0
-                while True:
-                    data = client_socket.recv(4096)
-                    if not data:
-                        break
-                    total_bytes_received += len(data)
-
-                if total_bytes_received == 0:
-                    sys.stderr.write("ERROR: No data received\n")  # Print error on no data
-
-                print(f"Received {total_bytes_received} bytes")
-
-                # Close the connection
-                client_socket.close()
+                # Handle the client in a separate function
+                handle_client(client_socket)
 
             except socket.timeout:
                 sys.stderr.write("ERROR: Connection timed out\n")
