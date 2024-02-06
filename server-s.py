@@ -13,7 +13,7 @@ def signal_handler(signum, frame):
 
 def handle_client(client_socket):
     try:
-        client_socket.send(b"accio\r\n")
+        client_socket.send(b"accio\r\n")  # Sending initial data to the client
         client_socket.settimeout(10)  # Set timeout for receiving data
 
         total_bytes_received = 0
@@ -44,6 +44,7 @@ def main():
 
     port = int(sys.argv[1])
 
+    # Register signal handlers
     signal.signal(signal.SIGQUIT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
@@ -58,6 +59,8 @@ def main():
 
         server_socket.bind(('0.0.0.0', port))
         server_socket.listen(10)
+
+        print(f"Server listening on port {port}")
 
         while not_stopped:
             try:
