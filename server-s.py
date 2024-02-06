@@ -1,7 +1,7 @@
 import socket
 import signal
 import sys
-import time
+import threading
 
 # Define a global flag to control server loop execution
 not_stopped = True
@@ -23,59 +23,28 @@ def handle_client(client_socket):
                 break
             total_bytes_received += len(data)
 
-        if total_bytes_received == 0:
-            sys.stderr.write("ERROR: No data received\n")
-        else:
-            print(f"Received {total_bytes_received} bytes")
+        print(f"Received {total_bytes_received} bytes")
 
     except socket.timeout:
-        sys.stderr.write("ERROR: Connection timed out\n")
+        print("ERROR: Connection timed out")
     except Exception as e:
-        sys.stderr.write(f"ERROR: {str(e)}\n")
+        print(f"ERROR: {str(e)}")
     finally:
         client_socket.close()
+
+def accept_connections(server_socket):
+    while not_stopped:
+        try:
+            client_socket, client_address = server_socket.accept()
+            print(f"Accepted connection from {client_address}")
+            client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+            client_thread.start()
+        except Exception as e:
+            if not_stopped:  # Only log errors if not stopping
+                print(f"Error accepting connection: {e}")
 
 def main():
     global not_stopped
 
     if len(sys.argv) != 2:
-        sys.stderr.write("ERROR: Invalid number of arguments\n")
-        sys.exit(1)
-
-    port = int(sys.argv[1])
-
-    # Register signal handlers
-    signal.signal(signal.SIGQUIT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow reusing the address
-
-    try:
-        if not (0 <= port <= 65535):
-            sys.stderr.write("ERROR: Port must be within range 0-65535\n")
-            sys.exit(1)
-
-        server_socket.bind(('0.0.0.0', port))
-        server_socket.listen(10)
-
-        print(f"Server listening on port {port}")
-
-        while not_stopped:
-            try:
-                server_socket.settimeout(1)  # Non-blocking accept with a timeout to check not_stopped flag
-                client_socket, client_address = server_socket.accept()
-                print(f"Accepted connection from {client_address}")
-                handle_client(client_socket)
-            except socket.timeout:
-                continue  # Go back to checking the not_stopped flag
-            except OSError as e:
-                if not_stopped:  # If the server is stopping, don't print the error message
-                    sys.stderr.write(f"ERROR: {str(e)}\n")
-
-    finally:
-        server_socket.close()
-
-if __name__ == "__main__":
-    main()
+        print("ERROR
