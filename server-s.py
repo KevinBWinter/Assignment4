@@ -23,6 +23,11 @@ def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
+        # Check if the port is within valid range (0-65535)
+        if not (0 <= port <= 65535):
+            sys.stderr.write("ERROR: Port must be within range 0-65535\n")
+            sys.exit(1)
+
         # Bind to the specified IP and port
         server_socket.bind(('0.0.0.0', port))
 
