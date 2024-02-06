@@ -39,6 +39,9 @@ def main():
                 # Send "accio\r\n" command
                 client_socket.send(b"accio\r\n")
 
+                # Set a timeout for receiving data
+                client_socket.settimeout(10)  # Adjust the timeout as needed
+
                 # Receive data and count bytes
                 total_bytes_received = 0
                 while True:
