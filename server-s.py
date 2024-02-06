@@ -1,6 +1,7 @@
 import socket
 import signal
 import sys
+import time
 
 # Define a global flag to control server loop execution
 not_stopped = True
@@ -12,7 +13,7 @@ def signal_handler(signum, frame):
 
 def handle_client(client_socket):
     try:
-        client_socket.send(b"Welcome\r\n")
+        client_socket.send(b"accio\r\n")  # Sending initial data to the client
         client_socket.settimeout(10)  # Set timeout for receiving data
 
         total_bytes_received = 0
@@ -22,46 +23,59 @@ def handle_client(client_socket):
                 break
             total_bytes_received += len(data)
 
-        print(f"Received {total_bytes_received} bytes from {client_socket.getpeername()}")
+        if total_bytes_received == 0:
+            sys.stderr.write("ERROR: No data received\n")
+        else:
+            print(f"Received {total_bytes_received} bytes")
 
     except socket.timeout:
-        print("ERROR: Connection timed out")
+        sys.stderr.write("ERROR: Connection timed out\n")
     except Exception as e:
-        print(f"ERROR: {e}")
+        sys.stderr.write(f"ERROR: {str(e)}\n")
     finally:
         client_socket.close()
 
 def main():
+    global not_stopped
+
     if len(sys.argv) != 2:
-        print("ERROR: Invalid number of arguments. Usage: python script.py <PORT>")
+        sys.stderr.write("ERROR: Invalid number of arguments\n")
         sys.exit(1)
 
     port = int(sys.argv[1])
-    if not (0 <= port <= 65535):
-        print("ERROR: Port must be within range 0-65535")
-        sys.exit(1)
 
-    # Setup signal handlers for graceful shutdown
-    signal.signal(signal.SIGINT, signal_handler)
+    # Register signal handlers
+    signal.signal(signal.SIGQUIT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow reusing the address
+
+    try:
+        if not (0 <= port <= 65535):
+            sys.stderr.write("ERROR: Port must be within range 0-65535\n")
+            sys.exit(1)
+
         server_socket.bind(('0.0.0.0', port))
-        server_socket.listen()
+        server_socket.listen(10)
 
         print(f"Server listening on port {port}")
 
         while not_stopped:
             try:
-                server_socket.settimeout(1)  # Check for shutdown signal
-                client_socket, addr = server_socket.accept()
+                server_socket.settimeout(1)  # Non-blocking accept with a timeout to check not_stopped flag
+                client_socket, client_address = server_socket.accept()
+                print(f"Accepted connection from {client_address}")
+                handle_client(client_socket)
             except socket.timeout:
-                continue  # Go back to the top of the loop to check not_stopped flag
+                continue  # Go back to checking the not_stopped flag
+            except OSError as e:
+                if not_stopped:  # If the server is stopping, don't print the error message
+                    sys.stderr.write(f"ERROR: {str(e)}\n")
 
-            print(f"Accepted connection from {addr}")
-            # Using threading to handle each client connection
-            threading.Thread(target=handle_client, args=(client_socket,)).start()
+    finally:
+        server_socket.close()
 
 if __name__ == "__main__":
     main()
